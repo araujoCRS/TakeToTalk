@@ -39,7 +39,7 @@ namespace TakeToTalk.Server.Hub
             {
                 WebSocket socket = null;
                 _socketsPool.TryRemove(key, out socket);
-                if(socket == null)
+                if (socket == null)
                 {
                     return false;
                 }
@@ -99,12 +99,12 @@ namespace TakeToTalk.Server.Hub
         {
             var bag = new ConcurrentBag<WebSocket>();
             List<WebSocket> all = null;
-            
-            if(_socketGroup.TryGetValue(group, out all))
+
+            if (_socketGroup.TryGetValue(group, out all))
             {
                 all.ForEach(socket => bag.Add(socket));
             }
-            
+
             return bag;
         }
 
@@ -114,9 +114,24 @@ namespace TakeToTalk.Server.Hub
             await webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async void Listen(WebSocket webSocket, Action<string> action)
+        public async Task Listen(WebSocket webSocket, Action<string> action)
         {
+            var buffer = new byte[1024 * 4];
 
+            while (true)
+            {
+                var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                if (result.MessageType == WebSocketMessageType.Text)
+                {
+                    action(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                }
+                else if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    await webSocket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    break;
+                }
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using TakeToTalk.Server.Hub;
+using TakeToTalk.Servicos.Servicos.Servico;
 
 namespace TakeToTalk.Server
 {
@@ -21,6 +22,11 @@ namespace TakeToTalk.Server
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddSingleton<HubService>();
+
+            //ADICIONANDO AO Singleton PARA UTILIZAR COMO MOCK. INSTANCIA UNICA E COMPATILHADA
+            services.AddSingleton<ServicoUsuario>();
+            services.AddSingleton<ServicoSala>();
+
             services.AddControllers();
             services.AddSwaggerGen(c =>
             {

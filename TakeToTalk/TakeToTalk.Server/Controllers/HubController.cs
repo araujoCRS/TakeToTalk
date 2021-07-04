@@ -1,27 +1,62 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using TakeToTalk.Server.Hub;
+using TakeToTalk.Servicos.Negocio;
+using TakeToTalk.Servicos.Servicos.Servico;
 
 namespace TakeToTalk.Server.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class HubController : ControllerBase
+    public class HubController : ControllerPadrao
     {
-        private readonly ILogger<HubController> _logger;
-        private HubService _hubService;
-        public HubController(ILogger<HubController> logger, HubService hubService)
+        public HubController(HubService hubService, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
         {
-            _logger = logger;
             _hubService = hubService;
+            _servicoUsuario = servicoUsuario;
+            _servicoSala = servicoSala;
+        }
+
+        public ActionResult Cadastrar(DtoUsuario usuario)
+        {
+            try
+            {
+                if(usuario == null)
+                {
+                    return Ok(new
+                    {
+                        Success = false,
+                        Message = "Dados invalidos"
+                    });
+                }
+
+                var matchs = _servicoUsuario.Consulte(x => x.Nicknome == usuario.Nickname);
+                if (matchs.Any())
+                {
+                    return Ok(new
+                    {
+                        Success = false,
+                        Message = "Nome escolhido esta em uso."
+                    });
+                }
+
+                //Implementar um conversor no serviço se sobrar tempo
+                var negocio = new Usuario()
+                {
+                    Nicknome = usuario.Nickname,
+                    Bio = usuario.Bio
+                };
+                _servicoUsuario.Salve(negocio);
+
+                return Ok(negocio);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro no cadastro de usuario.", ex);
+            }
         }
 
         [HttpGet]
@@ -32,10 +67,10 @@ namespace TakeToTalk.Server.Controllers
             if (HttpContext.WebSockets.IsWebSocketRequest)
             {
                 using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-                await _hubService.Add("teste", webSocket);
+                await _hubService.Add(Guid.NewGuid().ToString(), webSocket);
                 await _hubService.SendTo(webSocket, "Conexão estabalecida. Pronto para receber");
-                await _hubService.Add("teste", webSocket);
-                await Echo(webSocket);
+                await _hubService.Listen(webSocket, RouterMessage);
+                //await Echo(webSocket);
             }
             else
             {
@@ -43,17 +78,10 @@ namespace TakeToTalk.Server.Controllers
             }
         }
 
-        private async Task Echo(WebSocket webSocket) //https://docs.microsoft.com/pt-br/aspnet/core/fundamentals/websockets?view=aspnetcore-3.1#send-and-receive-messages
+        private async void RouterMessage(string messsage)
         {
-            var buffer = new byte[1024 * 4];
-            WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            while (!result.CloseStatus.HasValue)
-            {
-                await webSocket.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
-
-                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            }
-            await webSocket.CloseAsync(result.CloseStatus.Value, result.CloseStatusDescription, CancellationToken.None);
+            var webSocket = _hubService.Get("teste");
+            await _hubService.SendTo(webSocket, $"Sua mensagem: '{messsage}'");
         }
     }
 }
