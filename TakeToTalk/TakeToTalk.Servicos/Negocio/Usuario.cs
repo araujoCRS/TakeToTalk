@@ -2,7 +2,7 @@
 {
     public class Usuario : ObjetoPadrao
     {
-        public string Nicknome { get; set; }
+        public string Nickname { get; set; }
         public string Bio { get; set; }
     }
 }

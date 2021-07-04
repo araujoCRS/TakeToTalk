@@ -56,6 +56,7 @@ namespace TakeToTalk.Servicos.Servicos.Repositorio
             //CHAMAR UM VALIDADOR ATENS DE SALVAR - FLUENTVALIDATION
             lock (lockObject)
             {
+                obj.Id = Guid.NewGuid().ToString();
                 _dbSalas.Add(obj.Id, obj);
             }
         }

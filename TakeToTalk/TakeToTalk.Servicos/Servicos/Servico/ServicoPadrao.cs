@@ -11,6 +11,29 @@ namespace TakeToTalk.Servicos.Servicos.Servico
     public abstract class ServicoPadrao<T> : IDisposable where T : ObjetoPadrao
     {
         private IRepositorioPadrao<T> repositorio;
+
+        private void AjustarRepositorio(string stringConexao)
+        {
+            try
+            {
+                var type = typeof(IRepositorioPadrao<T>);
+                var types = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(s => s.GetTypes())
+                    .Where(p => type.IsAssignableFrom(p));
+
+                repositorio = (IRepositorioPadrao<T>)Activator.CreateInstance(types.First(), new object[] { stringConexao });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Houve um erro ao instanciar as dependências indiretas na clase base. Verifique se 'T' é uma instância que herda a classe 'RepositorioPadrao'", ex);
+            }
+        }
+
+        public ServicoPadrao()
+        {
+            AjustarRepositorio("");
+        }
+
         public virtual List<T> Consulte()
         {
             return repositorio.Consulte();

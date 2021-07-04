@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Http;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -114,7 +115,7 @@ namespace TakeToTalk.Server.Hub
             await webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task Listen(WebSocket webSocket, Action<string> action)
+        public async Task Listen(HttpContext context, WebSocket webSocket, Action<string> action)
         {
             var buffer = new byte[1024 * 4];
 
