@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace TakeToTalk.Server.Hub
+namespace TakeToTalk.Hub.Hub
 {
     public class HubService
     {
@@ -150,10 +149,10 @@ namespace TakeToTalk.Server.Hub
         public async Task SendTo(WebSocket webSocket, string message)
         {
             var bytes = Encoding.UTF8.GetBytes(message);
-            await webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
+            await webSocket?.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task Listen(WebSocket webSocket, Action<string> action)
+        public async Task Listen(string id, WebSocket webSocket, Action<string, string> action)
         {
             var buffer = new byte[1024 * 4];
 
@@ -163,7 +162,7 @@ namespace TakeToTalk.Server.Hub
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    action(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                    action(Encoding.UTF8.GetString(buffer, 0, result.Count), id);
                 }
                 else if (result.MessageType == WebSocketMessageType.Close)
                 {

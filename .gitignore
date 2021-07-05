@@ -11,3 +11,5 @@
 /TakeToTalk/TakeToTalk.Servicos/bin/Debug/net5.0
 /TakeToTalk/TakeToTalk.Enumeradores/bin/Debug/net5.0
 *.user
+/TakeToTalk/TakeToTalk.Hub/bin/Debug/net5.0
+/TakeToTalk/TakeToTalk.Hub/obj

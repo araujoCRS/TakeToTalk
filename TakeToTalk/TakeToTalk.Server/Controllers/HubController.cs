@@ -3,15 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using TakeToTalk.Server.Hub;
+using TakeToTalk.Hub.Chat;
+using TakeToTalk.Servicos.Negocio;
 using TakeToTalk.Servicos.Servicos.Servico;
 
 namespace TakeToTalk.Server.Controllers
 {
     public class HubController : ControllerPadrao
     {
-        public HubController(HubService hubService, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
-        : base(hubService, servicoUsuario, servicoSala)
+        public HubController(Chat chat, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
+        : base(chat, servicoUsuario, servicoSala)
         {
         }
 
@@ -29,19 +30,12 @@ namespace TakeToTalk.Server.Controllers
                     return;
                 }
 
-                await _hubService.Add(Usuario.Id, webSocket);
-                await _hubService.Listen(webSocket, RouterMessage);
+                await _chat.Login(new Usuario { Id = Usuario.Id, Nickname = Usuario.Nickname, Bio = Usuario.Bio }, webSocket);
             }
             else
             {
                 HttpContext.Response.StatusCode = 400;
             }
-        }
-
-        private async void RouterMessage(string messsage)
-        {
-            var webSocket = _hubService.Get(Usuario.Id);
-            await _hubService.SendTo(webSocket, $"Sua mensagem: '{messsage}'");
         }
     }
 }

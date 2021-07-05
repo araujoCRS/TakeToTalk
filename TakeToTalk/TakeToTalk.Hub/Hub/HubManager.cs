@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.WebSockets;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace TakeToTalk.Server.Hub
+namespace TakeToTalk.Hub.Hub
 {
     public class HubManager
     {
@@ -14,10 +13,16 @@ namespace TakeToTalk.Server.Hub
             _hubService = new HubService();
         }
 
-        public async Task Registre(string id, WebSocket webSocket, Action<string> listenAction)
+        public async Task Registre(string id, WebSocket webSocket, Action<string, string> listenAction, string group)
         {
             await _hubService.Add(id, webSocket);
-            await _hubService.Listen(webSocket, listenAction);
+            _hubService.GroupIn(group, id);
+            await _hubService.Listen(id, webSocket, listenAction);
+        }
+
+        public async Task UnRegistre(string id)
+        {
+            await _hubService.Remover(id);
         }
 
         public void Brodcast(string message, string group = null)
@@ -38,6 +43,16 @@ namespace TakeToTalk.Server.Hub
         public void CreateGroup(string group)
         {
             _hubService.GroupAdd(group);
+        }
+
+        public void ExitGroup(string group, string id)
+        {
+            _hubService.GroupOut(group, id);
+        }
+
+        public void JoinGroup(string group, string id)
+        {
+            _hubService.GroupIn(group, id);
         }
     }
 }

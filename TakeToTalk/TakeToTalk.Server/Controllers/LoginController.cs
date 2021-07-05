@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using System;
 using System.Linq;
 using System.Text;
-using TakeToTalk.Server.Hub;
+using TakeToTalk.Hub.Chat;
 using TakeToTalk.Server.Model;
 using TakeToTalk.Servicos.Negocio;
 using TakeToTalk.Servicos.Servicos.Servico;
@@ -14,8 +14,8 @@ namespace TakeToTalk.Server.Controllers
 {
     public class LoginController : ControllerPadrao
     {
-        public LoginController(HubService hubService, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
-        : base(hubService, servicoUsuario, servicoSala)
+        public LoginController(Chat chat, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
+        : base(chat, servicoUsuario, servicoSala)
         {
         }
 

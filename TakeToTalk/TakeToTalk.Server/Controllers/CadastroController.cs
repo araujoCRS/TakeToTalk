@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Linq;
-using TakeToTalk.Server.Hub;
+using TakeToTalk.Hub.Chat;
 using TakeToTalk.Server.Model;
 using TakeToTalk.Servicos.Negocio;
 using TakeToTalk.Servicos.Servicos.Servico;
@@ -11,8 +11,8 @@ namespace TakeToTalk.Server.Controllers
 {
     public class CadastroController : ControllerPadrao
     {
-        public CadastroController(HubService hubService, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
-        : base(hubService, servicoUsuario, servicoSala)
+        public CadastroController(Chat chat, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
+        : base(chat, servicoUsuario, servicoSala)
         {
         }
 

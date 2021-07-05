@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using TakeToTalk.Server.Hub;
+using TakeToTalk.Hub.Chat;
 using TakeToTalk.Servicos.Negocio;
 using TakeToTalk.Servicos.Servicos.Servico;
 
@@ -14,14 +14,14 @@ namespace TakeToTalk.Server.Controllers
     [Route("[controller]")]
     public class ControllerPadrao : ControllerBase
     {
-        protected HubService _hubService;
+        protected Chat _chat;
         protected ServicoUsuario _servicoUsuario;
         protected ServicoSala _servicoSala;
         protected DtoUsuario Usuario;
 
-        public ControllerPadrao(HubService hubService, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
+        public ControllerPadrao(Chat chat, ServicoUsuario servicoUsuario, ServicoSala servicoSala)
         {
-            _hubService = hubService;
+            _chat = chat;
             _servicoUsuario = servicoUsuario;
             _servicoSala = servicoSala;
         }
