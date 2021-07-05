@@ -45,7 +45,7 @@ namespace TakeToTalk.Server.Hub
                     return false;
                 }
                 _socketGroup.Values.ToList().ForEach(grupo => grupo.Remove(socket));
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Conexao interrompida", CancellationToken.None);
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                 return true;
             }
             catch (ArgumentException ex)
@@ -53,12 +53,21 @@ namespace TakeToTalk.Server.Hub
                 throw new Exception("Falha ao remover WebSocket", ex);
             }
         }
-        public bool GroupTo(string group, string key)
+        public bool GroupAdd(string group)
+        {
+            if(string.IsNullOrEmpty(group) || string.IsNullOrWhiteSpace(group) || _socketGroup.ContainsKey(group))
+            {
+                return false;
+            }
+
+            return _socketGroup.TryAdd(group, new List<WebSocket>());
+        }
+        public bool GroupIn(string group, string key)
         {
             try
             {
                 WebSocket socket = null;
-                List<WebSocket> groupSocket = null;
+                List<WebSocket> grouped = null;
 
                 if (!_socketsPool.TryGetValue(key, out socket))
                 {
@@ -67,13 +76,13 @@ namespace TakeToTalk.Server.Hub
 
                 if (_socketGroup.ContainsKey(group))
                 {
-                    _socketGroup.TryGetValue(group, out groupSocket);
-                    groupSocket.Add(socket);
+                    _socketGroup.TryGetValue(group, out grouped);
+                    grouped.Add(socket);
                     return true;
                 }
 
-                groupSocket = new List<WebSocket>() { socket };
-                _socketGroup.TryAdd(group, groupSocket);
+                grouped = new List<WebSocket>() { socket };
+                _socketGroup.TryAdd(group, grouped);
                 return true;
             }
             catch (OverflowException ex)
@@ -82,30 +91,59 @@ namespace TakeToTalk.Server.Hub
             }
         }
 
-        public WebSocket Get(string key)
+        public bool GroupOut(string group, string key)
+        {
+            try
+            {
+                WebSocket socket = null;
+                List<WebSocket> grouped = null;
+
+                if (!_socketsPool.TryGetValue(key, out socket))
+                {
+                    return false;
+                }
+
+                if (_socketGroup.ContainsKey(group))
+                {
+                    _socketGroup.TryGetValue(group, out grouped);
+                    grouped.Remove(socket);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (OverflowException ex)
+            {
+                throw new Exception("Capacidade do pool de Socket atingido", ex);
+            }
+        }
+
+        public WebSocket Get(string key, string group = null)
         {
             WebSocket socket = null;
-            _socketsPool.TryGetValue(key, out socket);
-            return socket;
-        }
-
-        public ConcurrentBag<WebSocket> GetAll()
-        {
-            var bag = new ConcurrentBag<WebSocket>();
-            _socketsPool.Values.ToList().ForEach(socket => bag.Add(socket));
-            return bag;
-        }
-
-        public ConcurrentBag<WebSocket> GetAll(string group)
-        {
-            var bag = new ConcurrentBag<WebSocket>();
-            List<WebSocket> all = null;
-
-            if (_socketGroup.TryGetValue(group, out all))
+            List<WebSocket> grouped = null;
+            
+            if(_socketsPool.TryGetValue(key, out socket))
             {
-                all.ForEach(socket => bag.Add(socket));
+                return socket;
             }
 
+            _socketGroup.TryGetValue(group, out grouped);
+            return grouped.Contains(socket) ? socket : null;
+        }
+
+        public ConcurrentBag<WebSocket> GetAll(string group = null)
+        {
+            var bag = new ConcurrentBag<WebSocket>();
+            List<WebSocket> grouped = null;
+
+            if (group != null && _socketGroup.TryGetValue(group, out grouped))
+            {
+                grouped.ForEach(socket => bag.Add(socket));
+                return bag;
+            }
+
+            _socketsPool.Values.ToList().ForEach(socket => bag.Add(socket));
             return bag;
         }
 
@@ -115,7 +153,7 @@ namespace TakeToTalk.Server.Hub
             await webSocket.SendAsync(new ArraySegment<byte>(bytes, 0, bytes.Length), WebSocketMessageType.Text, true, CancellationToken.None);
         }
 
-        public async Task Listen(HttpContext context, WebSocket webSocket, Action<string> action)
+        public async Task Listen(WebSocket webSocket, Action<string> action)
         {
             var buffer = new byte[1024 * 4];
 

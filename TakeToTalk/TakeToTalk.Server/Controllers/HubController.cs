@@ -1,13 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using TakeToTalk.Server.Hub;
-using TakeToTalk.Servicos.Negocio;
 using TakeToTalk.Servicos.Servicos.Servico;
 
 namespace TakeToTalk.Server.Controllers
@@ -34,7 +30,7 @@ namespace TakeToTalk.Server.Controllers
                 }
 
                 await _hubService.Add(Usuario.Id, webSocket);
-                await _hubService.Listen(HttpContext, webSocket, RouterMessage);
+                await _hubService.Listen(webSocket, RouterMessage);
             }
             else
             {
