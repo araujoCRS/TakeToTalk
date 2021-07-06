@@ -1,0 +1,281 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+@using TakeToTalk.Enumeradores.Hub
+
+<script src="~/lib/jquery/dist/jquery.min.js" type="text/javascript"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.min.js" type="text/javascript"></script>
+
+<link href="~/lib/bootstrap/dist/css/bootstrap.css" rel="stylesheet" />
+<link href="~/lib/bootstrap/dist/css/bootstrap-grid.css" rel="stylesheet" />
+<link href="~/lib/bootstrap/dist/css/bootstrap-reboot.css" rel="stylesheet" />
+
+<script>
+    var TipoEnviada = 1;
+    var TipoRecebida = 2;
+    var TipoAviso = 3;
+    var salaCorrente = undefined;
+    var destinatarioCorrente = undefined;
+    var apiUrl = "localhost:5000";
+    var usuarioLogado = undefined;
+    var websocket = undefined;
+    var token = undefined;
+
+    function Cadastrar() {
+        var usuario = { Nickname: $("#cadNome").val() };
+        if (usuario.Nickname == "") {
+            alert("Insira um nome unico");
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "http://" + apiUrl + "/Cadastro/ManterUsuario",
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify(usuario),
+            success: function (result) {
+                if (result.success != undefined && !result.success) {
+                    alert(result.message);
+                    return;
+                }
+                usuarioLogado = result;
+                $("#login").css("display", "none");
+                $("#chat").css("display", "block");
+                IniciarChat();
+            },
+            error: function (x, status, error) {
+                alert(error)
+            }
+        });
+    };
+
+    async function IniciarChat() {
+        EfetuarLogin();
+        websocket = new WebSocket('ws://' + apiUrl + '/Hub/Send/' + token);
+        websocket.onmessage = TratarMensagemRecebida;
+        while (websocket.readyState != 1) { await new Promise(r => setTimeout(r, 500)); }
+        SolicitarStatus();
+    };
+
+    function EfetuarLogin() {
+        var credencial = { Username: usuarioLogado.nickname };
+        $.ajax({
+            type: "POST",
+            url: "http://" + apiUrl + "/Login/Authenticate",
+            contentType: 'application/json',
+            data: JSON.stringify(credencial),
+            async: false,
+            success: function (result) {
+                token = result.token;
+                usuarioLogado = result.usuario;
+            },
+            error: function (x, status, error) {
+                alert(error)
+            }
+        });
+    };
+
+    function ApresentarMensagem(mensagem, tipo, autor) {
+        if (tipo == TipoEnviada)
+            $("#inbox").append('<li class="list-group-item list-group-item-info"><span class="font-weight-bold">Eu: </span>' + mensagem + '</li>')
+        else if (tipo == TipoRecebida)
+            $("#inbox").append('<li class="list-group-item list-group-item-warning">' + '<span class="font-weight-bold">' + autor + ': </span>' + mensagem + '</li>')
+        else if (tipo == TipoAviso)
+            $("#inbox").append('<li class="list-group-item list-group-item-success"><span class="font-weight-bold">+</span>' + mensagem + '</li>')
+    };
+
+    function PreencherListas(data) {
+        $.each(data.usuarios, function (index, value) {
+            $("#listaUsuarios").append('<li id="' + value + '" class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;">' + value + '<span class="badge badge-primary badge-pill">online</span></li>');
+            $("#" + value).on("click", AbrirChatIndividual);
+        });
+        $.each(data.rooms, function (index, value) {
+            $("#listaSalas").append('<li id="' + value + '" class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;">' + value + '</li>');
+            $("#" + value).on("click", TrocarDeSala);
+        });
+        $.each(data.roomsConect, function (index, value) {
+            $("#" + value).addClass("active");
+            salaCorrente = value;
+        });
+    }
+
+    function RemoverUsuarioOffline(usuario) {
+        $("#" + usuario).remove();
+    };
+
+    function TrocarDeSala() {
+        var aviso = "Você saiu da sala " + "'" + salaCorrente + "'";
+        if (salaCorrente != undefined) {
+            $("#" + salaCorrente).removeClass("active");
+            AletarSala(true); //Sair
+        }
+
+        salaCorrente = $(this).prop("id");
+        AletarSala(false);//Entrar
+        $("#" + salaCorrente).addClass("active");
+
+        aviso = aviso + " para " + "'" + salaCorrente + "'";
+        ApresentarMensagem(aviso, TipoAviso, null)
+    };
+
+    function AbrirChatIndividual() {
+        $(this).toggleClass("active");
+        var usuario = $(this).prop("id");
+
+        if (destinatarioCorrente == usuario) {
+            destinatarioCorrente = undefined;
+        } else {
+            destinatarioCorrente = usuario;
+        }
+    };
+
+    function TratarMensagemRecebida(event) {
+        var message = JSON.parse(event.data);
+
+        if (message.Action == @((int)EnumMessageActions.STATUS))
+        {
+            PreencherListas(message.Data)
+        }
+        else if (message.Action == @((int)EnumMessageActions.NEWCROOM))
+        {
+            PreencherListas({ usuarios: [], rooms: [message.Data], roomsConect:[] })
+            ApresentarMensagem(message.Sender + " criou a sala: " + message.Data, TipoAviso, null)
+        }
+        else if (message.Sender == usuarioLogado.nickname) {
+            if(message.Action == @((int)EnumMessageActions.JOINCHAT))
+                salaCorrente = message.Room;
+            return;
+        }
+        else if (message.Action == @((int)EnumMessageActions.NONE))
+        {
+            ApresentarMensagem(message.Data, TipoRecebida, message.Sender);
+        }
+        else if (message.Action == @((int)EnumMessageActions.JOINCHAT))
+        {
+            PreencherListas({ usuarios: [message.Sender], rooms: [], roomsConect: [] })
+            ApresentarMensagem(message.Sender + " esta online", TipoAviso, null)
+        }
+        else if (message.Action == @((int)EnumMessageActions.JOINROOM))
+        {
+            ApresentarMensagem(message.Sender + " entrou na sala", TipoAviso, null)
+        }
+        else if (message.Action == @((int)EnumMessageActions.EXITCHAT))
+        {
+            RemoverUsuarioOffline(message.Sender);
+            ApresentarMensagem(message.Sender + " esta offline", TipoAviso, null)
+        }
+        else if (message.Action == @((int)EnumMessageActions.EXITROOM))
+        {
+            ApresentarMensagem(message.Sender + " deixou a sala", TipoAviso, null)
+        }
+    };
+
+    function Enviar() {
+        var texto = $("#mensagem").val();
+        $("#mensagem").val("");
+
+        var msg = {
+            Sender: usuarioLogado.nickname,
+            Destiny: @((int)EnumMessageDestiny.ROOM),
+            Privacy: @((int)EnumMessagePrivacy.PUBLICA),
+            Action: @((int)EnumMessageActions.NONE),
+            Room: salaCorrente,
+            DestinyName: null,
+            Data: texto
+        }
+
+        ApresentarMensagem(texto, TipoEnviada, null);
+        websocket.send(JSON.stringify(msg));
+    };
+
+    function CriarSala() {
+        var texto = $("#mensagem").val();
+        $("#mensagem").val("");
+
+        var msg = {
+            Sender: usuarioLogado.nickname,
+            Destiny: @((int)EnumMessageDestiny.ROOM),
+            Privacy: @((int)EnumMessagePrivacy.PUBLICA),
+            Action: @((int)EnumMessageActions.NEWCROOM),
+            Room: null,
+            DestinyName: null,
+            Data: texto
+        }
+
+        websocket.send(JSON.stringify(msg));
+    };
+
+    function SolicitarStatus() {
+        var msg = {
+            Sender: usuarioLogado.nickname,
+            Destiny: @((int)EnumMessageDestiny.USER),
+            Privacy: @((int)EnumMessagePrivacy.PRIVADA),
+            Action: @((int)EnumMessageActions.STATUS),
+            Room: null,
+            DestinyName: null,
+            Data: null
+        }
+
+        websocket.send(JSON.stringify(msg));
+    };
+
+    function AletarSala(isOut) {
+
+        var action = isOut ? @((int)EnumMessageActions.EXITROOM) : @((int)EnumMessageActions.JOINROOM);
+        var msg = {
+            Sender: usuarioLogado.nickname,
+            Destiny: @((int)EnumMessageDestiny.ROOM),
+            Privacy: @((int)EnumMessagePrivacy.PUBLICA),
+            Action: action,
+            Room: salaCorrente,
+            DestinyName: null,
+            Data: salaCorrente
+        }
+
+        websocket.send(JSON.stringify(msg));
+    };
+</script>
+
+<div class="jumbotron">
+    <h1>Bem vindo ao TakeToTalk!!!!</h1>
+    <br/>
+    <div class="row well">
+        <div id="login" class="col-sm-12">
+            <p>Nome/Apelido</p>
+            <input id="cadNome" type="text" />
+            <button onclick="Cadastrar()" type="button" class="btn btn-default">Sou novo</button>
+            <button onclick="EfetuarLogin()" type="button" class="btn btn-default">Entrar</button>
+        </div>
+        <div id="chat" class="col-sm-12" style="display:none">
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="row">
+                        <div id="salas" class="col-sm-6">
+                            <h4>Salas</h4>
+                            <ul id="listaSalas" class="list-group">
+                            </ul>
+                        </div>
+                        <div id="usuarios" class="col-sm-6">
+                            <h4>Pessoas</h4>
+                            <ul id="listaUsuarios" class="list-group">
+                            </ul>
+                        </div>
+                    </div>
+                    </div>
+                <div class="col-sm-6">
+                    <ul id="inbox" class="list-group">
+                    </ul>
+                    <br />
+                    <div class="input-group">
+                        <input id="mensagem" type="text" class="form-control" placeholder="Digite aqui sua mensagem">
+                        <span class="input-group-btn">
+                            <button onclick="Enviar()" type="button" class="btn btn-secondary">Enviar</button>
+                            <button onclick="CriarSala()" type="button" class="btn btn-success">+Sala</button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

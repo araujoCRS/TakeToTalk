@@ -20,6 +20,7 @@ namespace TakeToTalk.Server
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddSingleton<Chat>();
 
             //ADICIONANDO AO Singleton PARA UTILIZAR COMO MOCK. INSTANCIA UNICA E COMPATILHADA
@@ -42,6 +43,10 @@ namespace TakeToTalk.Server
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "TakeToTalk.Server v1"));
             }
 
+            app.UseCors(x => x
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader());
             app.UseWebSockets();
             app.UseRouting();
             app.UseAuthorization();

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TakeToTalk.Enumeradores.Hub
+﻿namespace TakeToTalk.Enumeradores.Hub
 {
     public enum EnumMessageActions
     {
@@ -12,6 +6,8 @@ namespace TakeToTalk.Enumeradores.Hub
         NEWCROOM,
         JOINROOM,
         EXITROOM,
-        EXITCHAT
+        JOINCHAT,
+        EXITCHAT,
+        STATUS
     }
 }

@@ -35,7 +35,7 @@ namespace TakeToTalk.Server.Controllers
             
             var json = JsonConvert.SerializeObject(usuarios.First());
             var fakeToken = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
-            return Ok(fakeToken);
+            return Ok(new { Usuario = usuarios.First(), Token = fakeToken });
         }
     }
 }
