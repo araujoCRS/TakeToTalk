@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using TakeToTalk.Enumeradores.Hub;
@@ -25,8 +24,10 @@ namespace TakeToTalk.Hub.Chat
                 Sender = usuario.Nickname,
                 Action = EnumMessageActions.JOINCHAT,
                 Privacy = EnumMessagePrivacy.PUBLICA,
-                Destiny = EnumMessageDestiny.ROOM
+                DestinyType = EnumMessageDestinyType.ROOM
             };
+
+            await _hub.UnRegistre(usuario.Nickname);
 
             var rooms = _hub.GetRooms();
             rooms.ForEach(room =>
@@ -47,7 +48,7 @@ namespace TakeToTalk.Hub.Chat
             var message = JsonConvert.DeserializeObject<Message>(data);
             switch (message.Action)
             {
-                case EnumMessageActions.NONE:
+                case EnumMessageActions.TALK:
                     SendMessage(message);
                     return;
                 case EnumMessageActions.NEWCROOM:
@@ -79,10 +80,10 @@ namespace TakeToTalk.Hub.Chat
             var rooms = _hub.GetRooms();
             var roomsConect = _hub.GetRoomsConect(message.Sender);
 
-            message.Destiny = EnumMessageDestiny.USER;
+            message.DestinyType = EnumMessageDestinyType.USER;
             message.Action = EnumMessageActions.STATUS;
             message.Data = new { usuarios, rooms, roomsConect };
-            message.DestinyName = message.Sender;
+            message.User = message.Sender;
             message.Privacy = EnumMessagePrivacy.PRIVADA;
 
             SendMessage(message);
@@ -90,18 +91,45 @@ namespace TakeToTalk.Hub.Chat
 
         private void SendMessage(Message message)
         {
-            if (message.Destiny == EnumMessageDestiny.ROOM && message.Privacy == EnumMessagePrivacy.PUBLICA)
+            if (message.DestinyType == EnumMessageDestinyType.USER)
+            {
+                Task.WaitAll(_hub.Send(message));
+                return;
+            }
+
+            if (message.Privacy == EnumMessagePrivacy.PUBLICA && string.IsNullOrEmpty(message.User))
             {
                 _hub.Brodcast(message);
                 return;
             }
 
-            Task.WaitAll(_hub.Send(message));
-            return;
+            if (!string.IsNullOrEmpty(message.User))
+            {
+                if (message.DestinyType == EnumMessageDestinyType.ROOM)
+                {
+                    var rooms = _hub.GetRoomsConect(message.User);
+                    if (!rooms.Contains(message.Room)) //SE USUARIO NÃO ESTA NA SALA
+                    {
+                        message.Action = EnumMessageActions.ERROR;
+                        message.User = message.Sender;
+                        Task.WaitAll(_hub.Send(message));
+                        return;
+                    }
+                    if(message.Privacy == EnumMessagePrivacy.PRIVADA)
+                    {
+                        Task.WaitAll(_hub.Send(message));
+                        message.Data = null;
+                    }
+
+                    _hub.Brodcast(message);
+                    return;
+                }
+            }
         }
 
         private void ExitChat(string usuario)
         {
+            var rooms = _hub.GetRoomsConect(usuario);
             Task.WaitAll(_hub.UnRegistre(usuario));
 
             var message = new Message()
@@ -109,9 +137,9 @@ namespace TakeToTalk.Hub.Chat
                 Sender = usuario,
                 Action = EnumMessageActions.EXITCHAT,
                 Privacy = EnumMessagePrivacy.PUBLICA,
-                Destiny = EnumMessageDestiny.ROOM
+                DestinyType = EnumMessageDestinyType.ROOM
             };
-            var rooms = _hub.GetRoomsConect(usuario);
+            
             rooms.ForEach(room =>
             {
                 message.Room = room;
@@ -130,7 +158,7 @@ namespace TakeToTalk.Hub.Chat
             {
                 Sender = usuario,
                 Action = EnumMessageActions.EXITROOM,
-                Destiny = EnumMessageDestiny.ROOM,
+                DestinyType = EnumMessageDestinyType.ROOM,
                 Privacy = EnumMessagePrivacy.PUBLICA,
                 Room = room
             };
@@ -145,7 +173,7 @@ namespace TakeToTalk.Hub.Chat
             {
                 Sender = usuario,
                 Action = EnumMessageActions.JOINROOM,
-                Destiny = EnumMessageDestiny.ROOM,
+                DestinyType = EnumMessageDestinyType.ROOM,
                 Privacy = EnumMessagePrivacy.PUBLICA,
                 Room = room
             };
@@ -162,7 +190,7 @@ namespace TakeToTalk.Hub.Chat
             {
                 Sender = usuario,
                 Action = EnumMessageActions.NEWCROOM,
-                Destiny = EnumMessageDestiny.ROOM,
+                DestinyType = EnumMessageDestinyType.ROOM,
                 Privacy = EnumMessagePrivacy.PUBLICA,
                 Data = room
             };

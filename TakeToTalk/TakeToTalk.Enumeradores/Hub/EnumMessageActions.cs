@@ -2,12 +2,13 @@
 {
     public enum EnumMessageActions
     {
-        NONE = 0,
+        TALK = 0,
         NEWCROOM,
         JOINROOM,
         EXITROOM,
         JOINCHAT,
         EXITCHAT,
-        STATUS
+        STATUS,
+        ERROR
     }
 }

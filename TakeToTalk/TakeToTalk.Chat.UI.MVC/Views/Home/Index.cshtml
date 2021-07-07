@@ -24,7 +24,7 @@
     function Cadastrar() {
         var usuario = { Nickname: $("#cadNome").val() };
         if (usuario.Nickname == "") {
-            alert("Insira um nome unico");
+            alert("Insira um nome");
             return;
         }
 
@@ -42,6 +42,7 @@
                 usuarioLogado = result;
                 $("#login").css("display", "none");
                 $("#chat").css("display", "block");
+                $("#titulo").html(usuarioLogado.nickname + " Take your friends To Talk!!!!");
                 IniciarChat();
             },
             error: function (x, status, error) {
@@ -54,12 +55,13 @@
         EfetuarLogin();
         websocket = new WebSocket('ws://' + apiUrl + '/Hub/Send/' + token);
         websocket.onmessage = TratarMensagemRecebida;
+        websocket.onclose = TratarFechamento;
         while (websocket.readyState != 1) { await new Promise(r => setTimeout(r, 500)); }
         SolicitarStatus();
     };
 
     function EfetuarLogin() {
-        var credencial = { Username: usuarioLogado.nickname };
+        var credencial = { Username: $("#cadNome").val().trim() };
         $.ajax({
             type: "POST",
             url: "http://" + apiUrl + "/Login/Authenticate",
@@ -69,6 +71,9 @@
             success: function (result) {
                 token = result.token;
                 usuarioLogado = result.usuario;
+                $("#login").css("display", "none");
+                $("#chat").css("display", "block");
+                $("#titulo").html(usuarioLogado.nickname + " Take your friends To Talk!!!!");
             },
             error: function (x, status, error) {
                 alert(error)
@@ -133,7 +138,28 @@
     function TratarMensagemRecebida(event) {
         var message = JSON.parse(event.data);
 
-        if (message.Action == @((int)EnumMessageActions.STATUS))
+        if (message.Action == @((int)EnumMessageActions.TALK))
+        {
+            if (!message.Data) {
+                return;
+            }
+
+            if (message.Room) { // NO AMPTY?
+
+                if (message.Privacy == @((int)EnumMessagePrivacy.PRIVADA) && message.User) { //SOMENTE A INSTANCIA DO DESTINATARIO RECEBE ESSA MSG
+                    message.Data = '@@Privada - ' + message.Data;
+                }
+                else if (message.Privacy == @((int)EnumMessagePrivacy.PUBLICA) && message.User) {
+                    message.Data = '@@' + message.User + " - " + message.Data;
+                }
+            }
+            if (message.Sender == usuarioLogado.nickname) {
+                ApresentarMensagem(message.Data, TipoEnviada, null);
+            } else {
+                ApresentarMensagem(message.Data, TipoRecebida, message.Sender);
+            }
+        }
+        else if (message.Action == @((int)EnumMessageActions.STATUS))
         {
             PreencherListas(message.Data)
         }
@@ -141,15 +167,6 @@
         {
             PreencherListas({ usuarios: [], rooms: [message.Data], roomsConect:[] })
             ApresentarMensagem(message.Sender + " criou a sala: " + message.Data, TipoAviso, null)
-        }
-        else if (message.Sender == usuarioLogado.nickname) {
-            if(message.Action == @((int)EnumMessageActions.JOINCHAT))
-                salaCorrente = message.Room;
-            return;
-        }
-        else if (message.Action == @((int)EnumMessageActions.NONE))
-        {
-            ApresentarMensagem(message.Data, TipoRecebida, message.Sender);
         }
         else if (message.Action == @((int)EnumMessageActions.JOINCHAT))
         {
@@ -169,23 +186,38 @@
         {
             ApresentarMensagem(message.Sender + " deixou a sala", TipoAviso, null)
         }
+        else if (message.Action == @((int)EnumMessageActions.ERROR))
+        {
+            if (message.Privacy == @((int)EnumMessagePrivacy.PRIVADA))
+                ApresentarMensagem("Mensagem privada recusa. Destinatario não esta na sala.", TipoAviso, null);
+        }
     };
+
+    function TratarFechamento(event) {
+        alert("Você foi desconectado do chat. Refaça o login.")
+        $(":input").prop("disabled", true);
+        $("#listaSalas").html("");
+        $("#listaUsuarios").html("");
+    }
 
     function Enviar() {
         var texto = $("#mensagem").val();
-        $("#mensagem").val("");
-
+        var privacidade = @((int)EnumMessagePrivacy.PUBLICA);
+        if ($('#privada')[0].checked && destinatarioCorrente != undefined) {
+            ApresentarMensagem(texto, TipoEnviada, null);
+            privacidade = @((int)EnumMessagePrivacy.PRIVADA);
+        }
         var msg = {
             Sender: usuarioLogado.nickname,
-            Destiny: @((int)EnumMessageDestiny.ROOM),
-            Privacy: @((int)EnumMessagePrivacy.PUBLICA),
-            Action: @((int)EnumMessageActions.NONE),
+            DestinyType: @((int)EnumMessageDestinyType.ROOM),
+            Privacy: privacidade,
+            Action: @((int)EnumMessageActions.TALK),
             Room: salaCorrente,
-            DestinyName: null,
+            User: destinatarioCorrente,
             Data: texto
         }
 
-        ApresentarMensagem(texto, TipoEnviada, null);
+        $("#mensagem").val("");
         websocket.send(JSON.stringify(msg));
     };
 
@@ -195,11 +227,11 @@
 
         var msg = {
             Sender: usuarioLogado.nickname,
-            Destiny: @((int)EnumMessageDestiny.ROOM),
+            DestinyType: @((int)EnumMessageDestinyType.ROOM),
             Privacy: @((int)EnumMessagePrivacy.PUBLICA),
             Action: @((int)EnumMessageActions.NEWCROOM),
             Room: null,
-            DestinyName: null,
+            User: null,
             Data: texto
         }
 
@@ -209,11 +241,11 @@
     function SolicitarStatus() {
         var msg = {
             Sender: usuarioLogado.nickname,
-            Destiny: @((int)EnumMessageDestiny.USER),
+            DestinyType: @((int)EnumMessageDestinyType.USER),
             Privacy: @((int)EnumMessagePrivacy.PRIVADA),
             Action: @((int)EnumMessageActions.STATUS),
             Room: null,
-            DestinyName: null,
+            User: null,
             Data: null
         }
 
@@ -225,12 +257,26 @@
         var action = isOut ? @((int)EnumMessageActions.EXITROOM) : @((int)EnumMessageActions.JOINROOM);
         var msg = {
             Sender: usuarioLogado.nickname,
-            Destiny: @((int)EnumMessageDestiny.ROOM),
+            DestinyType: @((int)EnumMessageDestinyType.ROOM),
             Privacy: @((int)EnumMessagePrivacy.PUBLICA),
             Action: action,
             Room: salaCorrente,
-            DestinyName: null,
+            User: null,
             Data: salaCorrente
+        }
+
+        websocket.send(JSON.stringify(msg));
+    };
+
+    function Sair() {
+        var msg = {
+            Sender: usuarioLogado.nickname,
+            DestinyType: @((int)EnumMessageDestinyType.ROOM),
+            Privacy: @((int)EnumMessagePrivacy.PUBLICA),
+            Action: @((int)EnumMessageActions.EXITCHAT),
+            Room: null,
+            User: null,
+            Data: null
         }
 
         websocket.send(JSON.stringify(msg));
@@ -238,14 +284,14 @@
 </script>
 
 <div class="jumbotron">
-    <h1>Bem vindo ao TakeToTalk!!!!</h1>
+    <h1 id="titulo">Bem vindo ao TakeToTalk!!!!</h1>
     <br/>
     <div class="row well">
         <div id="login" class="col-sm-12">
             <p>Nome/Apelido</p>
             <input id="cadNome" type="text" />
             <button onclick="Cadastrar()" type="button" class="btn btn-default">Sou novo</button>
-            <button onclick="EfetuarLogin()" type="button" class="btn btn-default">Entrar</button>
+            <button onclick="IniciarChat()" type="button" class="btn btn-default">Entrar</button>
         </div>
         <div id="chat" class="col-sm-12" style="display:none">
             <div class="row">
@@ -268,10 +314,15 @@
                     </ul>
                     <br />
                     <div class="input-group">
+                        <div class="form-check">
+                            <input id="privada" class="form-check-input" type="checkbox">
+                            <label class="form-check-label">Privada</label>
+                        </div>
                         <input id="mensagem" type="text" class="form-control" placeholder="Digite aqui sua mensagem">
                         <span class="input-group-btn">
                             <button onclick="Enviar()" type="button" class="btn btn-secondary">Enviar</button>
                             <button onclick="CriarSala()" type="button" class="btn btn-success">+Sala</button>
+                            <button onclick="Sair()" type="button" class="btn btn-danger">Sair</button>
                         </span>
                     </div>
                 </div>

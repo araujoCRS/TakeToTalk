@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
+using TakeToTalk.Enumeradores.Hub;
 using TakeToTalk.Hub.Protocolo;
 
 namespace TakeToTalk.Hub.Hub
@@ -23,7 +24,19 @@ namespace TakeToTalk.Hub.Hub
 
         public async Task UnRegistre(string id)
         {
-            await _hubService.Remover(id);
+            var removido = await _hubService.Remover(id);
+            if (removido)
+            {
+                var message = new Message()
+                {
+                    Sender = id,
+                    Action = EnumMessageActions.EXITCHAT,
+                    Privacy = EnumMessagePrivacy.PUBLICA,
+                    DestinyType = EnumMessageDestinyType.ROOM
+                };
+
+                Brodcast(message);
+            }
         }
 
         public void Brodcast(Message message)
@@ -37,7 +50,7 @@ namespace TakeToTalk.Hub.Hub
 
         public async Task Send(Message message)
         {
-            var socket = _hubService.Get(message.DestinyName, message.Room);
+            var socket = _hubService.Get(message.User, message.Room);
             await _hubService.Send(socket, message.ToString());
         }
 
@@ -67,7 +80,7 @@ namespace TakeToTalk.Hub.Hub
 
         public List<string> GetRoomsConect(string id)
         {
-            return _hubService.GetRoomsConect(id);
+            return string.IsNullOrEmpty(id) ? new List<string>() : _hubService.GetRoomsConect(id);
         }
     }
 }

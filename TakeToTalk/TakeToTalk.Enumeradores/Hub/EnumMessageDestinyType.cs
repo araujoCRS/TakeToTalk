@@ -1,6 +1,6 @@
 ﻿namespace TakeToTalk.Enumeradores.Hub
 {
-    public enum EnumMessageDestiny
+    public enum EnumMessageDestinyType
     {
         ROOM,
         USER
