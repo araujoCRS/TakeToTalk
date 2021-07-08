@@ -3,6 +3,10 @@ using TakeToTalk.Enumeradores.Hub;
 
 namespace TakeToTalk.Hub.Protocolo
 {
+    /// <summary>
+    /// Abstrai o padrão de comunicação.
+    /// Define o padrão de mensageria.
+    /// </summary>
     public class Message
     {
         public string Sender { get; set; }

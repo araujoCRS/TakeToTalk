@@ -99,7 +99,7 @@
             $("#listaSalas").append('<li id="' + value + '" class="list-group-item d-flex justify-content-between align-items-center" style="cursor: pointer;">' + value + '</li>');
             $("#" + value).on("click", TrocarDeSala);
         });
-        $.each(data.roomsConect, function (index, value) {
+        $.each(data.connected, function (index, value) {
             $("#" + value).addClass("active");
             salaCorrente = value;
         });
@@ -135,7 +135,7 @@
         }
     };
 
-    function TratarMensagemRecebida(event) {
+    function TratarMensagemRecebida(event) { //CORE do tratamento
         var message = JSON.parse(event.data);
 
         if (message.Action == @((int)EnumMessageActions.TALK))
@@ -165,12 +165,12 @@
         }
         else if (message.Action == @((int)EnumMessageActions.NEWCROOM))
         {
-            PreencherListas({ usuarios: [], rooms: [message.Data], roomsConect:[] })
+            PreencherListas({ usuarios: [], rooms: [message.Data], connected:[] })
             ApresentarMensagem(message.Sender + " criou a sala: " + message.Data, TipoAviso, null)
         }
         else if (message.Action == @((int)EnumMessageActions.JOINCHAT))
         {
-            PreencherListas({ usuarios: [message.Sender], rooms: [], roomsConect: [] })
+            PreencherListas({ usuarios: [message.Sender], rooms: [], connected: [] })
             ApresentarMensagem(message.Sender + " esta online", TipoAviso, null)
         }
         else if (message.Action == @((int)EnumMessageActions.JOINROOM))

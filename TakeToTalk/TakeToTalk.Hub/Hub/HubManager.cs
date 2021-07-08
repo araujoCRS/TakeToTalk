@@ -7,21 +7,38 @@ using TakeToTalk.Hub.Protocolo;
 
 namespace TakeToTalk.Hub.Hub
 {
+    /// <summary>
+    /// Faz o controle de um cluster de Websockets independente. 
+    /// </summary>
     public class HubManager
     {
-        private HubService _hubService;
+        private readonly HubService _hubService;
         public HubManager()
         {
             _hubService = new HubService();
         }
 
+        /// <summary>
+        /// Vincula Websocket ao serviço de gerenciamento, classifica em um grupo e faz a associação das acões.
+        /// </summary>
+        /// <param name="id">Identifiador unico do Websocket</param>
+        /// <param name="webSocket">Instancia Websocket com status Open</param>
+        /// <param name="group">Grupo para primeira classificação do Websocket</param>
+        /// <param name="listenAction">Ação que será executada quado uma mensagem for recebida pelo Websocket</param>
+        /// <param name="actionClose">Ação que será executada quando a conexão com Websoket for fechada</param>
+        /// <returns>Task de controle de execução</returns>
         public async Task Registre(string id, WebSocket webSocket, string group, Action<string, string> listenAction, Action<string> actionClose)
         {
-            await _hubService.Add(id, webSocket);
+            _hubService.Add(id, webSocket);
             _hubService.GroupIn(group, id);
             await _hubService.Listen(id, webSocket, listenAction, actionClose);
         }
 
+        /// <summary>
+        /// Remove vinculo do Websocket no serviço de gerenciamento.
+        /// </summary>
+        /// <param name="id">Identificador unico do Websocket</param>
+        /// <returns>Tarefa de controle de execução</returns>
         public async Task UnRegistre(string id)
         {
             var removido = await _hubService.Remover(id);
@@ -39,9 +56,14 @@ namespace TakeToTalk.Hub.Hub
             }
         }
 
-        public void Brodcast(Message message)
+        /// <summary>
+        /// Envia uma mensagem para todos que estejam vinculados a um grupo ou para todos os grupos se a flag 'allGroups' estiver marcada
+        /// </summary>
+        /// <param name="message">Mensagem com as informações de destino</param>
+        /// <param name="allGroups">Controle de envio para grupo unico ou todos. False - Apenas grupo da mensagem e True - todos os grupos</param>
+        public void Brodcast(Message message, bool allGroups = false)
         {
-            var ativos = _hubService.GetAll(message.Room);
+            var ativos = _hubService.GetAll(!allGroups? message.Room : null);
             Parallel.ForEach(ativos, async socket =>
             {
                 await _hubService.Send(socket, message.ToString());
@@ -51,7 +73,16 @@ namespace TakeToTalk.Hub.Hub
         public async Task Send(Message message)
         {
             var socket = _hubService.Get(message.User, message.Room);
+            if(socket == null)
+            {
+                throw new Exception("Não existe um registro de saida vinculado aos dados informados");
+            }
             await _hubService.Send(socket, message.ToString());
+        }
+
+        public bool IsRegistred(string id)
+        {
+            return _hubService.Get(id) != null;
         }
 
         public void CreateGroup(string group)
@@ -80,7 +111,7 @@ namespace TakeToTalk.Hub.Hub
 
         public List<string> GetRoomsConect(string id)
         {
-            return string.IsNullOrEmpty(id) ? new List<string>() : _hubService.GetRoomsConect(id);
+            return string.IsNullOrEmpty(id) ? new List<string>() : _hubService.GroupAllocated(id);
         }
     }
 }
