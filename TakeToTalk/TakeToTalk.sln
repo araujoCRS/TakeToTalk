@@ -9,9 +9,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeToTalk.Enumeradores", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeToTalk.Server.Api", "TakeToTalk.Server\TakeToTalk.Server.Api.csproj", "{1E759C20-43CA-44F4-B8CB-305D25F037D6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeToTalk.Hub", "TakeToTalk.Hub\TakeToTalk.Hub.csproj", "{DBEAEBD0-7AB5-4999-97AB-06648D9E6C50}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeToTalk.Hub", "TakeToTalk.Hub\TakeToTalk.Hub.csproj", "{DBEAEBD0-7AB5-4999-97AB-06648D9E6C50}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeToTalk.Chat.UI.MVC", "TakeToTalk.Chat.UI.MVC\TakeToTalk.Chat.UI.MVC.csproj", "{E6AD0E30-2C96-4578-B7C2-7549325C3E45}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TakeToTalk.Chat.UI.MVC", "TakeToTalk.Chat.UI.MVC\TakeToTalk.Chat.UI.MVC.csproj", "{E6AD0E30-2C96-4578-B7C2-7549325C3E45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TakeToTalk.Testes", "TakeToTalk.Testes\TakeToTalk.Testes.csproj", "{229284AB-C0A4-4775-AF61-E7D3B1985BFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{E6AD0E30-2C96-4578-B7C2-7549325C3E45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E6AD0E30-2C96-4578-B7C2-7549325C3E45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E6AD0E30-2C96-4578-B7C2-7549325C3E45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{229284AB-C0A4-4775-AF61-E7D3B1985BFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{229284AB-C0A4-4775-AF61-E7D3B1985BFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{229284AB-C0A4-4775-AF61-E7D3B1985BFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{229284AB-C0A4-4775-AF61-E7D3B1985BFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
